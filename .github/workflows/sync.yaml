@@ -12,20 +12,19 @@ jobs:
       - name: Checkout repositório de imagens
         uses: actions/checkout@v4
 
-        host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+      - name: Copiar imagens do servidor Django via SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
         run: |
           mkdir -p Colaboradores/profile
-          # Adicione sua chave privada para autenticar no servidor
           eval "$(ssh-agent -s)"
           echo "$SSH_PRIVATE_KEY" > key.pem
           chmod 600 key.pem
           ssh-add key.pem
-          # Substitua usuario@servidor pelo seu usuário e IP/DNS da VPS
-          rsync -avz -e "ssh -o StrictHostKeyChecking=no -i key.pem" usuario@servidor:/var/www/sandbox.backend/apirest/media/user_image/* Colaboradores/profile/ || true
-          # Limpa as imagens na origem, se desejar
-          ssh -i key.pem -o StrictHostKeyChecking=no usuario@servidor 'rm -f /var/www/sandbox.backend/apirest/media/user_image/*' || true
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no -i key.pem" $VPS_USER@$VPS_HOST:/var/www/sandbox.backend/apirest/media/user_image/* Colaboradores/profile/ || true
+          ssh -i key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST 'rm -f /var/www/sandbox.backend/apirest/media/user_image/*' || true
 
       - name: Comitar e fazer push das novas imagens
         run: |
