@@ -1,0 +1,38 @@
+name: Sync Profile Images (webhook)
+
+on:
+  repository_dispatch:
+    types: [sync-profile-images]
+
+jobs:
+  sync-images:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repositório de imagens
+        uses: actions/checkout@v4
+
+        host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          mkdir -p Colaboradores/profile
+          # Adicione sua chave privada para autenticar no servidor
+          eval "$(ssh-agent -s)"
+          echo "$SSH_PRIVATE_KEY" > key.pem
+          chmod 600 key.pem
+          ssh-add key.pem
+          # Substitua usuario@servidor pelo seu usuário e IP/DNS da VPS
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no -i key.pem" usuario@servidor:/var/www/sandbox.backend/apirest/media/user_image/* Colaboradores/profile/ || true
+          # Limpa as imagens na origem, se desejar
+          ssh -i key.pem -o StrictHostKeyChecking=no usuario@servidor 'rm -f /var/www/sandbox.backend/apirest/media/user_image/*' || true
+
+      - name: Comitar e fazer push das novas imagens
+        run: |
+          git config user.name "CI"
+          git config user.email "ci@github.com"
+          git add Colaboradores/profile/
+          if ! git diff --cached --quiet; then
+            git commit -m "Novas imagens de perfil via webhook CI"
+            git push
+          fi
